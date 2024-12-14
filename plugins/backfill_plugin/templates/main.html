@@ -1,0 +1,85 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('backfill_plugin_blueprint.static', filename='css/style.css') }}">
+
+<h1 class="page-title">Airflow Backfill Plugin</h1>
+<button class="info-button" onclick="showInfo()">ℹ️</button>
+
+<div id="info-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeInfo()">&times;</span>
+        <h4>This airflow backfill plugin acts as a wrapper for airflow <a href="https://airflow.apache.org/docs/apache-airflow/2.10.2/cli-and-env-variables-ref.html#backfill">
+            backfill command</a>. Following are the features of this plugin:
+        </h4>
+        <ul>
+            <li>User can backfill without explicitly resetting the backfill dag-run states (if exists) via plugin UI.</li>
+            <li>The backfill can be done on an individual task or a group of selected tasks with or without ignoring dependencies.</li>
+        </ul>
+        <h4>Following facts must be considered before doing backfill:</h4>
+        <ul>
+            <li>If task B depends on task A (A -> B), and if "Ignore dependencies" is checked, both tasks will start independently.</li>
+            <li>If "Ignore dependencies" is not checked, other upstream tasks will also be triggered if the selected downstream task depends on them.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const dagsAndTasks = {{ dags_and_tasks | tojson }};
+</script>
+<div class="form-container">
+    <form method="post" action="{{ url_for('lets_do_backfill.backfill_view') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="dag">Select DAG</label>
+        <select id="dag" name="dag" required onchange="updateTasks()">
+            <option value="" disabled selected>Select a DAG</option>
+            {% for dag in dags_and_tasks %}
+                <option value="{{ dag }}">{{ dag }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="enable_tasks">Select specific tasks <input type="checkbox" id="enable_tasks" name="enable_tasks" onclick="toggleTasksSelection()"></label>
+
+        <div id="tasks-container" style="display: none;">
+            <label for="enable_tasks">Ignore dependencies <input type="checkbox" id="ignore_dependencies" name="ignore_dependencies" onclick="toggleTasksSelection()" checked></label>
+            <label for="tasks">Select Tasks</label>
+            <select id="tasks" name="tasks" multiple>
+<!--                <option value="" disabled>Select tasks</option>-->
+            </select>
+        </div>
+        <label for="start_date">First data_interval_start</label>
+        <input type="datetime-local" id="start_date" name="start_date" onclick="setDefaultDateTime(event)" required>
+
+        <label for="end_date">Last data_interval_start (included)</label>
+        <input type="datetime-local" id="end_date" name="end_date" onclick="setDefaultDateTime(event)" required>
+
+        <button type="submit">Submit</button>
+
+        {% if error_message %}
+            <div class="error-message">{{ error_message }}</div>
+        {% endif %}
+    </form>
+</div>
+
+<div class="submissions-container">
+    <h4>Recent Backfill Submissions (up to 10)</h4>
+    <a id="refresh-button" href="./">↻</a>
+    <ul id="submissions-list">
+        {% for submission in submissions %}
+            <li data-logs="{{ submission.logs }}" data-status="{{ submission.status }}">
+                Submitted at {{submission.timestamp}} for <b>{{submission.dag}}</b> from <b>{{submission.start_date}}</b> to <b>{{submission.end_date}}</b>.
+                <span class="log-status"></span>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div id="logs-modal">
+    <div id="logs-content">
+        <button class="close-btn" onclick="closeLogs()">×</button>
+        <pre id="logs-text"></pre>
+    </div>
+</div>
+
+<script src="{{ url_for('backfill_plugin_blueprint.static', filename='js/script.js') }}"></script>
+{% endblock %}
