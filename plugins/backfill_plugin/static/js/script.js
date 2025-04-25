@@ -58,7 +58,7 @@ function updateTasks() {
     tasksSelect.innerHTML = '';
 
     if (dag) {
-        const tasks = dagsAndTasks[dag];
+        const tasks = activeDagsAndTasks[dag];
         tasks.forEach(task => {
             const option = document.createElement('option');
             option.value = task;

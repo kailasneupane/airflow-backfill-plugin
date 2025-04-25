@@ -1,38 +1,27 @@
 from airflow import DAG
+from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.task_group import TaskGroup
-from airflow.operators.python import PythonOperator
 from datetime import datetime
 
 default_args = {
     'start_date': datetime(2024, 8, 1),
-    "owner": "dataops",
+    "owner": "ops",
 }
-
-
-def print_data_interval(**kwargs):
-    data_interval_start = kwargs['data_interval_start']
-    data_interval_end = kwargs['data_interval_end']
-
-    print(f"Data Interval Start: {data_interval_start}")
-    print(f"Data Interval End: {data_interval_end}")
-
-def print_data_intervals(task_id):
-    return PythonOperator(
-    task_id=task_id,
-    python_callable=print_data_interval,
-    provide_context=True,
-)
 
 # Initialize the DAG
 with DAG(
-    dag_id='dummy_dag',
+    dag_id='dummy_dag_daily',
     default_args=default_args,
     schedule_interval='@daily',
+    max_active_runs=1,
     catchup=False,
 ) as dag:
 
-    task1 = print_data_intervals("task1")
+    task1 = BashOperator(
+        task_id='task1',
+        bash_command='echo hello world;sleep 20;',
+    )
 
     task2 = EmptyOperator(
         task_id='task2',
@@ -56,6 +45,8 @@ with DAG(
         )
         task2_1 >> task2_2
 
-    final_task = print_data_intervals("final_task")
+    final_task = EmptyOperator(
+        task_id='final_task',
+    )
 
     task1 >> task2 >> [taskgroup1, taskgroup2] >> final_task

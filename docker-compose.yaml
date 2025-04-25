@@ -1,4 +1,4 @@
-# https://airflow.apache.org/docs/apache-airflow/2.10.2/docker-compose.yaml
+# https://airflow.apache.org/docs/apache-airflow/2.10.5/docker-compose.yaml
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -25,7 +25,7 @@
 # The following variables are supported:
 #
 # AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:2.10.2
+#                                Default: apache/airflow:2.10.5
 # AIRFLOW_UID                  - User ID in Airflow containers
 #                                Default: 50000
 # AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
@@ -50,21 +50,24 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.10.2}
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.10.5}
   build: .
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__MAX_TEMPLATED_FIELD_LENGTH: 9999999999
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: mysql+mysqlconnector://airflow:airflow@mysql:3306/airflow?charset=utf8mb4
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql://airflow:airflow@mysql:3306/airflow?charset=utf8mb4
+    # AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql://airflow:airflow@mysql:3306/airflow?charset=utf8mb4
     AIRFLOW__CELERY__RESULT_BACKEND: db+mysql://airflow:airflow@mysql:3306/airflow?charset=utf8mb4
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
-    AIRFLOW__SCHEDULER__USE_JOB_SCHEDULE: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    # AIRFLOW__SCHEDULER__USE_JOB_SCHEDULE: 'false'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
     AIRFLOW__WEBSERVER__NAVBAR_COLOR: "#a4bae1f5"
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: '/opt/airflow/logs/base'
+    AIRFLOW__LOGGING__SCHEDULER_LOG_FOLDER: '/opt/airflow/logs/scheduler'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
@@ -106,6 +109,7 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-u", "airflow", "-pairflow", "--silent"]
       interval: 10s
       retries: 5
+      start_period: 5s
     restart: always
 
   redis:

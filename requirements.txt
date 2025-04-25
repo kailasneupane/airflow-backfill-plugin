@@ -1,4 +1,8 @@
-# https://github.com/apache/airflow/blob/constraints-2.10.2/constraints-3.11.txt
-apache-airflow==2.10.2
+apache-airflow==2.10.5
 Flask-Admin==1.6.1
-Flask-WTF==1.2.1
+Flask-WTF==1.2.2
+SQLAlchemy==1.4.54
+pendulum==3.0.0
+Flask==2.2.5
+Flask-Login==0.6.3
+Flask-AppBuilder==4.5.2

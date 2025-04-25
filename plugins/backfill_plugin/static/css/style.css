@@ -21,7 +21,7 @@
     font-weight: bold;
 }
 
-.form-container input[type="datetime-local"],
+.form-container input[type="date"],
 .form-container select {
     width: 100%;
     padding: 10px;

@@ -8,7 +8,7 @@
 <div id="info-modal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeInfo()">&times;</span>
-        <h4>This airflow backfill plugin acts as a wrapper for airflow <a href="https://airflow.apache.org/docs/apache-airflow/2.10.2/cli-and-env-variables-ref.html#backfill">
+        <h4>This airflow backfill plugin acts as a wrapper for airflow <a href="https://airflow.apache.org/docs/apache-airflow/stable/cli-and-env-variables-ref.html#backfill">
             backfill command</a>. Following are the features of this plugin:
         </h4>
         <ul>
@@ -17,41 +17,55 @@
         </ul>
         <h4>Following facts must be considered before doing backfill:</h4>
         <ul>
-            <li>If task B depends on task A (A -> B), and if "Ignore dependencies" is checked, both tasks will start independently.</li>
-            <li>If "Ignore dependencies" is not checked, other upstream tasks will also be triggered if the selected downstream task depends on them.</li>
+            <li>If task B depends on task A (A -> B), and if "Run all dependencies (including unselected ones)" is not checked, both tasks will start independently.</li>
+            <li>If "Run all dependencies (including unselected ones)" is checked, other upstream tasks will also be triggered if the selected downstream task depends on them.</li>
+            <li>The unchecked "Run all dependencies (including unselected ones)" basically means the underlying dag backfill command is executed with the "ignore_dependencies" option (i.e. -i) activated.</li>
         </ul>
     </div>
 </div>
 
 <script>
-    const dagsAndTasks = {{ dags_and_tasks | tojson }};
+    const activeDagsAndTasks = {{ active_dags_and_tasks | tojson }};
+    const form_data = {{ form_data | tojson }};
 </script>
 <div class="form-container">
     <form method="post" action="{{ url_for('lets_do_backfill.backfill_view') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
         <label for="dag">Select DAG</label>
         <select id="dag" name="dag" required onchange="updateTasks()">
-            <option value="" disabled selected>Select a DAG</option>
-            {% for dag in dags_and_tasks %}
-                <option value="{{ dag }}">{{ dag }}</option>
+            <option value="" disabled {% if not form_data.get('dag') %}selected{% endif %}>Select a DAG</option>
+            {% for dag in active_dags_and_tasks %}
+                <option value="{{ dag }}" {% if form_data.get('dag') == dag %}selected{% endif %}>{{ dag }}</option>
             {% endfor %}
         </select>
 
-        <label for="enable_tasks">Select specific tasks <input type="checkbox" id="enable_tasks" name="enable_tasks" onclick="toggleTasksSelection()"></label>
+        <label for="enable_tasks">
+            Select specific tasks
+            <input type="checkbox" id="enable_tasks" name="enable_tasks"
+                   {% if form_data.get('enable_tasks') %}checked{% endif %}
+                   onclick="toggleTasksSelection(); updateTasks();">
+        </label>
 
-        <div id="tasks-container" style="display: none;">
-            <label for="enable_tasks">Ignore dependencies <input type="checkbox" id="ignore_dependencies" name="ignore_dependencies" onclick="toggleTasksSelection()" checked></label>
+        <div id="tasks-container" style="{% if form_data.get('enable_tasks') %}display: block;{% else %}display: none;{% endif %}">
+            <label for="run_all_dependencies">
+                Run all dependencies (including unselected ones)
+                <input type="checkbox" id="run_all_dependencies" name="run_all_dependencies"
+                       {% if form_data.get('run_all_dependencies') %}checked{% endif %}
+                       onclick="toggleTasksSelection()">
+            </label>
+
             <label for="tasks">Select Tasks</label>
             <select id="tasks" name="tasks" multiple>
 <!--                <option value="" disabled>Select tasks</option>-->
             </select>
         </div>
-        <label for="start_date">First data_interval_start</label>
-        <input type="datetime-local" id="start_date" name="start_date" onclick="setDefaultDateTime(event)" required>
 
-        <label for="end_date">Last data_interval_start (included)</label>
-        <input type="datetime-local" id="end_date" name="end_date" onclick="setDefaultDateTime(event)" required>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date"
+               value="{{ form_data.get('start_date', default_start_date) }}" required>
+
+        <label for="end_date">End Date: <span style="font-weight: normal; font-size: smaller;">(Specify interval_end + 1 day, as it's excluded from the backfill.)</span></label>
+        <input type="date" id="end_date" name="end_date" value="{{ form_data.get('end_date', default_end_date) }}" required>
 
         <button type="submit">Submit</button>
 
@@ -62,7 +76,7 @@
 </div>
 
 <div class="submissions-container">
-    <h4>Recent Backfill Submissions (up to 10)</h4>
+    <h4>Previous Backfill Submissions (upto 10)</h4>
     <a id="refresh-button" href="./">↻</a>
     <ul id="submissions-list">
         {% for submission in submissions %}
@@ -80,6 +94,13 @@
         <pre id="logs-text"></pre>
     </div>
 </div>
-
 <script src="{{ url_for('backfill_plugin_blueprint.static', filename='js/script.js') }}"></script>
+<script>
+    window.onload = function() {
+        const selectedDag = "{{ form_data.get('dag', [''])[0] }}";
+        if (selectedDag) {
+            updateTasks();
+        }
+    };
+</script>
 {% endblock %}
